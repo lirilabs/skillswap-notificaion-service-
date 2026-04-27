@@ -1,132 +1,213 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>FCM Push Console</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
 
 <style>
-body {
-  font-family: system-ui, -apple-system;
-  background: #0b0b0b;
-  color: #ffffff;
-  padding: 24px;
-}
-
-.container {
-  max-width: 520px;
-  margin: auto;
-}
-
-h2 {
-  margin-bottom: 16px;
-  font-weight: 600;
-}
-
-input, textarea {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  background: #111;
-  color: #fff;
-  border: 1px solid #262626;
-  border-radius: 8px;
-}
-
-textarea {
-  min-height: 90px;
-  resize: vertical;
-}
-
-button {
-  margin-top: 14px;
-  width: 100%;
-  padding: 12px;
-  background: #2563eb;
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 15px;
-}
-
-button:hover {
-  opacity: 0.9;
-}
-
-pre {
-  margin-top: 16px;
-  background: #111;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  overflow-x: auto;
-}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--color-text-primary);padding:0}
+.wrap{max-width:600px;padding:1.5rem 0}
+h2{font-size:18px;font-weight:500;margin-bottom:1.5rem}
+.tabs{display:flex;gap:0;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;margin-bottom:1.5rem;width:fit-content}
+.tab{padding:8px 20px;font-size:13px;cursor:pointer;background:transparent;border:none;color:var(--color-text-secondary);transition:all .15s}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500}
+.tab:not(:last-child){border-right:0.5px solid var(--color-border-tertiary)}
+.panel{display:none}.panel.active{display:block}
+label{display:block;font-size:12px;color:var(--color-text-secondary);margin-bottom:4px;margin-top:12px}
+label:first-child{margin-top:0}
+input,textarea,select{width:100%;padding:9px 12px;background:var(--color-background-primary);color:var(--color-text-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:14px;font-family:var(--font-sans)}
+textarea{min-height:80px;resize:vertical}
+.mono{font-family:var(--font-mono);font-size:12px;min-height:120px}
+.btn{margin-top:16px;width:100%;padding:10px;background:var(--color-background-secondary);color:var(--color-text-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;font-size:14px;font-weight:500;transition:all .15s}
+.btn:hover{background:var(--color-background-tertiary)}
+.btn:active{transform:scale(0.99)}
+.btn.primary{background:#2563eb;color:#fff;border-color:#1d4ed8}
+.btn.primary:hover{background:#1d4ed8}
+.result{margin-top:16px;background:var(--color-background-secondary);padding:12px;border-radius:var(--border-radius-md);font-size:12px;font-family:var(--font-mono);overflow-x:auto;max-height:260px;overflow-y:auto;border:0.5px solid var(--color-border-tertiary);white-space:pre-wrap;word-break:break-all;color:var(--color-text-secondary)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px;text-align:center}
+.stat .val{font-size:20px;font-weight:500}
+.stat .lbl{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.stat.ok .val{color:#16a34a}
+.stat.err .val{color:#dc2626}
+.prog-wrap{margin-top:12px;display:none}
+.prog-bar-bg{height:6px;background:var(--color-background-tertiary);border-radius:3px;overflow:hidden}
+.prog-bar{height:6px;background:#2563eb;border-radius:3px;width:0%;transition:width .3s}
+.prog-txt{font-size:12px;color:var(--color-text-secondary);margin-top:4px}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:100px;margin-left:6px;font-weight:500}
+.badge.new{background:#dbeafe;color:#1e40af}
+.info-box{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;font-size:12px;color:var(--color-text-secondary);margin-top:12px;line-height:1.6}
 </style>
-</head>
+<div class="wrap">
+<h2>FCM push console</h2>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('single')">Single token</div>
+  <div class="tab" onclick="switchTab('bulk')">Bulk / broadcast <span class="badge new">10k+</span></div>
+</div>
 
-<body>
-<div class="container">
-  <h2>FCM Push Notification</h2>
+<div id="panel-single" class="panel active">
+  <label>FCM device token</label>
+  <input id="s-token" placeholder="e.g. dJ3k..." />
+  <label>Title</label>
+  <input id="s-title" placeholder="Notification title" />
+  <label>Body</label>
+  <textarea id="s-body" placeholder="Notification message"></textarea>
+  <label>Image URL <span style="color:var(--color-text-tertiary)">(optional)</span></label>
+  <input id="s-image" placeholder="https://..." />
+  <label>Click action <span style="color:var(--color-text-tertiary)">(optional)</span></label>
+  <input id="s-action" placeholder="OPEN_APP" />
+  <button class="btn primary" onclick="sendSingle()">Send notification</button>
+  <div class="result" id="s-result" style="display:none"></div>
+</div>
 
-  <input id="token" placeholder="FCM Device Token" />
-  <input id="title" placeholder="Notification Title" />
-  <textarea id="body" placeholder="Notification Body"></textarea>
-  <input id="imageUrl" placeholder="Image URL (optional)" />
-  <input id="clickAction" placeholder="Click Action (optional)" />
-
-  <button onclick="sendNotification()">Send Notification</button>
-
-  <pre id="result"></pre>
+<div id="panel-bulk" class="panel">
+  <div class="info-box">Paste one FCM token per line. The API will batch them in chunks of 500 with concurrency control — safe for 10,000+ devices.</div>
+  <label>FCM tokens <span id="tok-count" style="color:var(--color-text-tertiary)"></span></label>
+  <textarea class="mono" id="b-tokens" placeholder="token1&#10;token2&#10;token3&#10;..." oninput="countTokens()"></textarea>
+  <label>Title</label>
+  <input id="b-title" placeholder="Notification title" />
+  <label>Body</label>
+  <textarea id="b-body" placeholder="Notification message"></textarea>
+  <label>Image URL <span style="color:var(--color-text-tertiary)">(optional)</span></label>
+  <input id="b-image" placeholder="https://..." />
+  <label>Click action <span style="color:var(--color-text-tertiary)">(optional)</span></label>
+  <input id="b-action" placeholder="OPEN_APP" />
+  <label>Chunk size <span style="color:var(--color-text-tertiary)">(max 500 per FCM batch)</span></label>
+  <select id="b-chunk">
+    <option value="100">100 tokens / batch</option>
+    <option value="250">250 tokens / batch</option>
+    <option value="500" selected>500 tokens / batch</option>
+  </select>
+  <label>Max concurrent batches</label>
+  <select id="b-concur">
+    <option value="2">2 (safe / slow)</option>
+    <option value="5" selected>5 (recommended)</option>
+    <option value="10">10 (fast / high load)</option>
+  </select>
+  <button class="btn primary" id="bulk-btn" onclick="sendBulk()">Send to all tokens</button>
+  <div class="prog-wrap" id="prog-wrap">
+    <div class="prog-bar-bg"><div class="prog-bar" id="prog-bar"></div></div>
+    <div class="prog-txt" id="prog-txt"></div>
+  </div>
+  <div class="stats" id="bulk-stats" style="display:none">
+    <div class="stat"><div class="val" id="stat-total">0</div><div class="lbl">Total</div></div>
+    <div class="stat ok"><div class="val" id="stat-ok">0</div><div class="lbl">Delivered</div></div>
+    <div class="stat err"><div class="val" id="stat-err">0</div><div class="lbl">Failed</div></div>
+  </div>
+  <div class="result" id="b-result" style="display:none"></div>
+</div>
 </div>
 
 <script>
-/* ✅ YOUR CONFIRMED BASE URL */
-const API_URL = "https://skillswap-notificaion-service.vercel.app/api/fcm";
+const API = "https://skillswap-notificaion-service.vercel.app/api/fcm";
+const BULK_API = "https://skillswap-notificaion-service.vercel.app/api/fcm/bulk";
 
-async function sendNotification() {
-  const token = document.getElementById("token").value.trim();
-  const title = document.getElementById("title").value.trim();
-  const body = document.getElementById("body").value.trim();
-  const imageUrl = document.getElementById("imageUrl").value.trim();
-  const clickAction = document.getElementById("clickAction").value.trim();
-  const result = document.getElementById("result");
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['single','bulk'][i]===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+}
 
-  if (!token || !title || !body) {
-    alert("Token, title, and body are required");
-    return;
-  }
+function countTokens(){
+  const tokens=getTokens();
+  const el=document.getElementById('tok-count');
+  el.textContent=tokens.length?`(${tokens.length.toLocaleString()} tokens)`:'';
+}
 
-  const payload = {
-    token,
-    title,
-    body,
-    ...(imageUrl ? { imageUrl } : {}),
-    ...(clickAction ? { clickAction } : {}),
+function getTokens(){
+  return document.getElementById('b-tokens').value.split('\n').map(t=>t.trim()).filter(Boolean);
+}
+
+function showResult(id,data,isErr=false){
+  const el=document.getElementById(id);
+  el.style.display='block';
+  el.style.color=isErr?'#dc2626':'var(--color-text-secondary)';
+  el.textContent=typeof data==='string'?data:JSON.stringify(data,null,2);
+}
+
+async function sendSingle(){
+  const token=document.getElementById('s-token').value.trim();
+  const title=document.getElementById('s-title').value.trim();
+  const body=document.getElementById('s-body').value.trim();
+  const imageUrl=document.getElementById('s-image').value.trim();
+  const clickAction=document.getElementById('s-action').value.trim();
+  if(!token||!title||!body){alert('Token, title and body are required');return;}
+  const payload={token,title,body,...(imageUrl?{imageUrl}:{}),...(clickAction?{clickAction}:{})};
+  showResult('s-result','Sending...');
+  try{
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json();
+    showResult('s-result',data,!data.success);
+  }catch(e){showResult('s-result','Network error: '+e.message,true);}
+}
+
+async function sendBulk(){
+  const tokens=getTokens();
+  const title=document.getElementById('b-title').value.trim();
+  const body=document.getElementById('b-body').value.trim();
+  const imageUrl=document.getElementById('b-image').value.trim();
+  const clickAction=document.getElementById('b-action').value.trim();
+  const chunkSize=parseInt(document.getElementById('b-chunk').value);
+  const concur=parseInt(document.getElementById('b-concur').value);
+  if(!tokens.length||!title||!body){alert('Tokens, title and body are required');return;}
+
+  const btn=document.getElementById('bulk-btn');
+  btn.disabled=true;btn.textContent='Sending...';
+
+  const progWrap=document.getElementById('prog-wrap');
+  progWrap.style.display='block';
+  document.getElementById('bulk-stats').style.display='none';
+  document.getElementById('b-result').style.display='none';
+
+  const chunks=[];
+  for(let i=0;i<tokens.length;i+=chunkSize) chunks.push(tokens.slice(i,i+chunkSize));
+
+  let done=0,totalOk=0,totalErr=0;
+  const failures=[];
+
+  const setProgress=()=>{
+    const pct=Math.round((done/chunks.length)*100);
+    document.getElementById('prog-bar').style.width=pct+'%';
+    document.getElementById('prog-txt').textContent=`Batch ${done}/${chunks.length} — ${totalOk.toLocaleString()} delivered, ${totalErr.toLocaleString()} failed`;
+    document.getElementById('stat-total').textContent=tokens.length.toLocaleString();
+    document.getElementById('stat-ok').textContent=totalOk.toLocaleString();
+    document.getElementById('stat-err').textContent=totalErr.toLocaleString();
   };
 
-  result.textContent = "Sending...";
+  document.getElementById('bulk-stats').style.display='grid';
 
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const text = await res.text();
-    try {
-      result.textContent = JSON.stringify(JSON.parse(text), null, 2);
-    } catch {
-      result.textContent = text;
+  const runChunk=async(chunk,idx)=>{
+    const payload={
+      tokens:chunk,title,body,
+      ...(imageUrl?{imageUrl}:{}),
+      ...(clickAction?{clickAction}:{})
+    };
+    try{
+      const res=await fetch(BULK_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const data=await res.json();
+      totalOk+=(data.successCount||0);
+      totalErr+=(data.failureCount||0);
+      if(data.failures?.length) failures.push(...data.failures.map(f=>({...f,batch:idx})));
+    }catch(e){
+      totalErr+=chunk.length;
+      failures.push({error:e.message,batch:idx,tokens:chunk.length});
     }
+    done++;setProgress();
+  };
 
-  } catch (err) {
-    result.textContent = "Network error: " + err.message;
+  const queue=[...chunks.entries()];
+  const workers=Array.from({length:concur},async()=>{
+    while(queue.length){
+      const [idx,chunk]=queue.shift();
+      await runChunk(chunk,idx);
+    }
+  });
+
+  await Promise.all(workers);
+
+  btn.disabled=false;btn.textContent='Send to all tokens';
+  setProgress();
+
+  if(failures.length){
+    showResult('b-result',{summary:`${totalOk} delivered, ${totalErr} failed`,failures:failures.slice(0,20),...(failures.length>20?{more:`...and ${failures.length-20} more`}:{})},true);
+  }else{
+    showResult('b-result',{success:true,delivered:totalOk,failed:totalErr,batches:chunks.length});
   }
 }
 </script>
-</body>
-</html>
