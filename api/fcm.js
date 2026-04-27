@@ -1,38 +1,20 @@
 import admin from "firebase-admin";
 
 /* ======================================================
-   Safe Firebase Init
+   Firebase Admin Init
 ====================================================== */
-function initFirebase() {
-  if (admin.apps.length) return;
-
-  const {
-    FIREBASE_PROJECT_ID,
-    FIREBASE_CLIENT_EMAIL,
-    FIREBASE_PRIVATE_KEY,
-  } = process.env;
-
-  console.log("ENV CHECK:", {
-    projectId: !!FIREBASE_PROJECT_ID,
-    clientEmail: !!FIREBASE_CLIENT_EMAIL,
-    privateKey: !!FIREBASE_PRIVATE_KEY,
-  });
-
-  if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
-    throw new Error("Missing Firebase environment variables");
-  }
-
+if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert({
-      projectId: FIREBASE_PROJECT_ID,
-      clientEmail: FIREBASE_CLIENT_EMAIL,
-      privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
     }),
   });
 }
 
 /* ======================================================
-   API Handler
+   FCM API
 ====================================================== */
 export default async function handler(req, res) {
   // CORS
@@ -46,8 +28,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    initFirebase();
-
     const {
       token,
       title,
@@ -108,11 +88,10 @@ export default async function handler(req, res) {
       messageId,
     });
   } catch (err) {
-    console.error("🔥 FCM ERROR:", err);
-
+    console.error("FCM ERROR:", err);
     return res.status(500).json({
       success: false,
-      error: err.message || "Unknown error",
+      error: err.message,
     });
   }
 }
