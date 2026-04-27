@@ -1,68 +1,86 @@
 import admin from "firebase-admin";
 
 /* ======================================================
-   SAFE FIREBASE INIT (SERVERLESS FRIENDLY)
+   SAFE SINGLETON INIT (SERVERLESS)
 ====================================================== */
-function getFirebaseAdmin() {
-  if (admin.apps.length > 0) {
-    return admin;
+let firebaseApp;
+
+function initFirebase() {
+  if (firebaseApp) return firebaseApp;
+
+  const {
+    FIREBASE_PROJECT_ID,
+    FIREBASE_CLIENT_EMAIL,
+    FIREBASE_PRIVATE_KEY,
+  } = process.env;
+
+  // 🔍 Validate ENV (prevents silent crash)
+  if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
+    throw new Error("Missing Firebase environment variables");
   }
 
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  // 🔥 CRITICAL FIX: clean key
+  const privateKey = FIREBASE_PRIVATE_KEY
+    .replace(/\\n/g, "\n")
+    .replace(/\r/g, "");
 
-  if (!privateKey) {
-    throw new Error("Missing FIREBASE_PRIVATE_KEY");
-  }
-
-  admin.initializeApp({
+  firebaseApp = admin.initializeApp({
     credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: privateKey.replace(/\\n/g, "\n"),
+      projectId: FIREBASE_PROJECT_ID,
+      clientEmail: FIREBASE_CLIENT_EMAIL,
+      privateKey,
     }),
   });
 
-  return admin;
+  return firebaseApp;
 }
 
 /* ======================================================
    HANDLER
 ====================================================== */
 export default async function handler(req, res) {
-  // CORS
+  // 🌐 CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
   try {
-    const firebase = getFirebaseAdmin();
+    // 🔥 Init Firebase safely
+    initFirebase();
+
+    // 🔥 Ensure body parsing works in Vercel
+    const body =
+      typeof req.body === "string" ? JSON.parse(req.body) : req.body;
 
     const {
       token,
       title,
-      body,
+      body: messageBody,
       imageUrl,
       clickAction,
       data = {},
-    } = req.body || {};
+    } = body || {};
 
-    if (!token || !title || !body) {
+    if (!token || !title || !messageBody) {
       return res.status(400).json({
-        error: "token, title and body are required",
+        error: "token, title, body required",
       });
     }
 
+    // 📦 Build FCM message
     const message = {
       token,
       notification: {
         title,
-        body,
+        body: messageBody,
         ...(imageUrl && { image: imageUrl }),
       },
       data: {
@@ -92,7 +110,8 @@ export default async function handler(req, res) {
       },
     };
 
-    const messageId = await firebase.messaging().send(message);
+    // 🚀 Send notification
+    const messageId = await admin.messaging().send(message);
 
     return res.status(200).json({
       success: true,
@@ -100,11 +119,12 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error("🔥 FCM ERROR:", err);
+    console.error("🔥 FULL ERROR:", err);
 
     return res.status(500).json({
       success: false,
-      error: err.message || "Unknown error",
+      error: err.message,
+      stack: err.stack, // 🔥 critical for debugging
     });
   }
 }
