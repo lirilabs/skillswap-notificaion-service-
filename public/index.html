@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>FCM Push Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+body {
+  font-family: system-ui;
+  background: #0b0b0b;
+  color: #fff;
+  padding: 24px;
+}
+.container {
+  max-width: 520px;
+  margin: auto;
+}
+input, textarea {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  background: #111;
+  color: #fff;
+  border: 1px solid #262626;
+  border-radius: 8px;
+}
+button {
+  margin-top: 14px;
+  width: 100%;
+  padding: 12px;
+  background: #2563eb;
+  border-radius: 10px;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+pre {
+  margin-top: 16px;
+  background: #111;
+  padding: 12px;
+  border-radius: 8px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h2>FCM Push Notification</h2>
+
+  <input id="token" placeholder="Device Token" />
+  <input id="title" placeholder="Title" />
+  <textarea id="body" placeholder="Message"></textarea>
+  <input id="imageUrl" placeholder="Image URL (optional)" />
+  <input id="clickAction" placeholder="Click Action (optional)" />
+
+  <button onclick="send()">Send</button>
+  <pre id="result"></pre>
+</div>
+
+<script>
+const API_URL = "/api/fcm"; // SAME DOMAIN
+
+async function send() {
+  const result = document.getElementById("result");
+
+  const payload = {
+    token: token.value.trim(),
+    title: title.value.trim(),
+    body: body.value.trim(),
+    imageUrl: imageUrl.value.trim(),
+    clickAction: clickAction.value.trim(),
+  };
+
+  result.textContent = "Sending...";
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    result.textContent = JSON.stringify(data, null, 2);
+  } catch (e) {
+    result.textContent = "Error: " + e.message;
+  }
+}
+</script>
+</body>
+</html>
