@@ -1,20 +1,32 @@
 import admin from "firebase-admin";
 
 /* ======================================================
-   Firebase Admin Init
+   SAFE FIREBASE INIT (SERVERLESS FRIENDLY)
 ====================================================== */
-if (!admin.apps.length) {
+function getFirebaseAdmin() {
+  if (admin.apps.length > 0) {
+    return admin;
+  }
+
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (!privateKey) {
+    throw new Error("Missing FIREBASE_PRIVATE_KEY");
+  }
+
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      privateKey: privateKey.replace(/\\n/g, "\n"),
     }),
   });
+
+  return admin;
 }
 
 /* ======================================================
-   FCM API
+   HANDLER
 ====================================================== */
 export default async function handler(req, res) {
   // CORS
@@ -23,11 +35,14 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") return res.status(200).end();
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
   try {
+    const firebase = getFirebaseAdmin();
+
     const {
       token,
       title,
@@ -45,29 +60,25 @@ export default async function handler(req, res) {
 
     const message = {
       token,
-
       notification: {
         title,
         body,
-        ...(imageUrl ? { image: imageUrl } : {}),
+        ...(imageUrl && { image: imageUrl }),
       },
-
       data: {
         ...Object.fromEntries(
           Object.entries(data).map(([k, v]) => [k, String(v)])
         ),
-        ...(clickAction ? { click_action: clickAction } : {}),
+        ...(clickAction && { click_action: clickAction }),
       },
-
       android: {
         priority: "high",
         notification: {
           sound: "default",
           channelId: "default",
-          ...(imageUrl ? { imageUrl } : {}),
+          ...(imageUrl && { imageUrl }),
         },
       },
-
       apns: {
         payload: {
           aps: {
@@ -76,22 +87,24 @@ export default async function handler(req, res) {
           },
         },
         fcmOptions: {
-          ...(imageUrl ? { image: imageUrl } : {}),
+          ...(imageUrl && { image: imageUrl }),
         },
       },
     };
 
-    const messageId = await admin.messaging().send(message);
+    const messageId = await firebase.messaging().send(message);
 
     return res.status(200).json({
       success: true,
       messageId,
     });
+
   } catch (err) {
-    console.error("FCM ERROR:", err);
+    console.error("🔥 FCM ERROR:", err);
+
     return res.status(500).json({
       success: false,
-      error: err.message,
+      error: err.message || "Unknown error",
     });
   }
 }
